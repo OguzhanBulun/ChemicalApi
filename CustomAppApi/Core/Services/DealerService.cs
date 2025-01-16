@@ -12,12 +12,14 @@ namespace CustomAppApi.Core.Services
         private readonly IGenericRepository<Dealer> _dealerRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly IGenericRepository<User> _userRepository;
 
-        public DealerService(IGenericRepository<Dealer> dealerRepository, IUnitOfWork unitOfWork, IMapper mapper)
+        public DealerService(IGenericRepository<Dealer> dealerRepository, IUnitOfWork unitOfWork, IMapper mapper, IGenericRepository<User> userRepository)
         {
             _dealerRepository = dealerRepository;
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _userRepository = userRepository;
         }
 
         public async Task<IEnumerable<DealerDto>> GetAllAsync()
@@ -37,25 +39,45 @@ namespace CustomAppApi.Core.Services
             if (dealer == null)
                 throw new KeyNotFoundException($"Dealer with ID {id} not found.");
                 
-            return _mapper.Map<DealerDto>(dealer);
+            var dealerDto = _mapper.Map<DealerDto>(dealer);
+            dealerDto.Id = dealer.Id;
+            return dealerDto;
         }
 
         public async Task<DealerDto> CreateAsync(DealerDto dealerDto)
         {
-            var exists = await ExistsAsync(dealerDto.TaxNumber, dealerDto.Email);
-            if (exists)
-                throw new InvalidOperationException("Tax number or email already exists.");
+            try 
+            {
+                var exists = await ExistsAsync(dealerDto.TaxNumber, dealerDto.Email);
+                if (exists)
+                    throw new InvalidOperationException($"Dealer with tax number {dealerDto.TaxNumber} or email {dealerDto.Email} already exists.");
 
-            var dealer = _mapper.Map<Dealer>(dealerDto);
-            await _dealerRepository.AddAsync(dealer);
-            await _unitOfWork.CommitAsync();
-            
-            return _mapper.Map<DealerDto>(dealer);
+                // User'ın var olduğunu kontrol et
+                var user = await _userRepository.GetByIdAsync(dealerDto.UserId);
+                if (user == null)
+                    throw new KeyNotFoundException($"User with ID {dealerDto.UserId} not found.");
+
+                if (user.UserType != UserType.Dealer)
+                    throw new InvalidOperationException("Selected user must be a dealer type user.");
+
+                var dealer = _mapper.Map<Dealer>(dealerDto);
+                await _dealerRepository.AddAsync(dealer);
+                await _unitOfWork.CommitAsync();
+                
+                return await GetByIdAsync(dealer.Id);
+            }
+            catch (DbUpdateException ex)
+            {
+                throw new InvalidOperationException("Database error occurred while creating dealer.", ex);
+            }
         }
 
         public async Task UpdateAsync(DealerDto dealerDto)
         {
-            var existingDealer = await _dealerRepository.GetByIdAsync(dealerDto.Id);
+            if (!dealerDto.Id.HasValue)
+                throw new ArgumentException("Dealer ID cannot be null");
+
+            var existingDealer = await _dealerRepository.GetByIdAsync(dealerDto.Id.Value);
             if (existingDealer == null)
                 throw new KeyNotFoundException($"Dealer with ID {dealerDto.Id} not found.");
 

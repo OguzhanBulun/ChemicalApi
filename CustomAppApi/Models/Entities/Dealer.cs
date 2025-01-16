@@ -12,8 +12,8 @@ namespace CustomAppApi.Models.Entities
         public string Email { get; set; }
         public string TaxNumber { get; set; }
         public int UserId { get; set; }
-        public User User { get; set; }
-        public ICollection<Offer> Offers { get; set; }
-        public ICollection<Sale> Sales { get; set; }
+        public virtual User User { get; set; }
+        public virtual ICollection<Offer> Offers { get; set; }
+        public virtual ICollection<Sale> Sales { get; set; }
     }
 } 

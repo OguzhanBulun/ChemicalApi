@@ -5,6 +5,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using CustomAppApi.Models.DTOs;
 using CustomAppApi.Models.Entities;
+using BCrypt.Net;
+using AutoMapper;
 
 namespace CustomAppApi.Core.Services
 {
@@ -12,30 +14,33 @@ namespace CustomAppApi.Core.Services
     {
         private readonly IUserService _userService;
         private readonly IConfiguration _configuration;
+        private readonly IMapper _mapper;
 
-        public AuthService(IUserService userService, IConfiguration configuration)
+        public AuthService(IUserService userService, IConfiguration configuration, IMapper mapper)
         {
             _userService = userService;
             _configuration = configuration;
+            _mapper = mapper;
         }
 
         public async Task<AuthResponse> LoginAsync(LoginRequest request)
         {
-            var user = await _userService.GetByUsernameAsync(request.Username);
+            var userEntity = await _userService.GetByUsernameWithPasswordAsync(request.Username);
             
-            if (request.Password != "test123")
+            if (!BCrypt.Net.BCrypt.Verify(request.Password, userEntity.PasswordHash))
                 throw new InvalidOperationException("Invalid username or password");
 
-            var token = await GenerateTokenAsync(user);
-            var dealerId = user.UserType == UserType.Dealer ? 
-                (await _userService.GetByIdAsync(user.Id))?.Id : null as int?;
+            var userDto = _mapper.Map<UserDto>(userEntity);
+            var token = await GenerateTokenAsync(userDto);
+            var dealerId = userDto.UserType == UserType.Dealer ? 
+                (await _userService.GetByIdAsync(userDto.Id!.Value))?.Id : null as int?;
 
             return new AuthResponse
             {
                 Token = token,
                 Expiration = DateTime.UtcNow.AddMinutes(
                     double.Parse(_configuration["JwtSettings:ExpirationInMinutes"])),
-                UserType = user.UserType.ToString(),
+                UserType = userDto.UserType.ToString(),
                 DealerId = dealerId
             };
         }
@@ -50,15 +55,15 @@ namespace CustomAppApi.Core.Services
             {
                 new Claim(ClaimTypes.Name, user.Username),
                 new Claim(ClaimTypes.Role, user.UserType.ToString()),
-                new Claim("UserId", user.Id.ToString())
+                new Claim("UserId", user.Id!.Value.ToString())
             };
 
             if (user.UserType == UserType.Dealer)
             {
-                var dealer = await _userService.GetByIdAsync(user.Id);
+                var dealer = await _userService.GetByIdAsync(user.Id!.Value);
                 if (dealer != null)
                 {
-                    claims.Add(new Claim("DealerId", dealer.Id.ToString()));
+                    claims.Add(new Claim("DealerId", dealer.Id!.Value.ToString()));
                 }
             }
 

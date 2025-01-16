@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using CustomAppApi.Core.Services;
 using CustomAppApi.Models.DTOs;
 using CustomAppApi.Models.Common;
+using Microsoft.AspNetCore.Authorization;
 
 namespace CustomAppApi.Controllers.V1
 {
@@ -38,6 +39,16 @@ namespace CustomAppApi.Controllers.V1
             return CreatedAtAction(nameof(GetById), 
                 new { id = createdUser.Id }, 
                 ApiResponse<UserDto>.SuccessResult(createdUser, "Kullanıcı başarıyla oluşturuldu"));
+        }
+
+        [HttpPost("change-password")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponse<object>>> ChangePassword(ChangePasswordRequest request)
+        {
+            var userId = int.Parse(User.FindFirst("UserId")?.Value ?? "0");
+            await _userService.ChangePasswordAsync(userId, request.CurrentPassword, request.NewPassword);
+            
+            return Ok(ApiResponse<object>.SuccessResult(null, "Password changed successfully"));
         }
 
     }

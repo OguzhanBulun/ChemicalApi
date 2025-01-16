@@ -8,8 +8,13 @@ namespace CustomAppApi.Core.Mapping
     {
         public MappingProfile()
         {
-            CreateMap<User, UserDto>().ReverseMap();
-            CreateMap<Dealer, DealerDto>().ReverseMap();
+            CreateMap<User, UserDto>()
+                .ReverseMap()
+                .ForMember(dest => dest.Id, opt => opt.Ignore());
+            CreateMap<Dealer, DealerDto>()
+                .ReverseMap()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.User, opt => opt.Ignore());
             CreateMap<Product, ProductDto>().ReverseMap();
             CreateMap<Offer, OfferDto>().ReverseMap();
             CreateMap<Sale, SaleDto>().ReverseMap();

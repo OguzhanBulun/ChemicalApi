@@ -57,7 +57,14 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
+        sqlServerOptionsAction: sqlOptions =>
+        {
+            sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorNumbersToAdd: null);
+        }));
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddAutoMapper(typeof(MappingProfile));
@@ -133,6 +140,15 @@ builder.Services.AddRateLimiter(options =>
             {
                 PermitLimit = int.Parse(builder.Configuration["RateLimiting:Endpoints:Sale:PermitLimit"]!),
                 Window = TimeSpan.FromMinutes(1)
+            }));
+
+    options.AddPolicy("RegisterLimit", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString(),
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = int.Parse(builder.Configuration["RateLimiting:Endpoints:Register:PermitLimit"]!),
+                Window = TimeSpan.FromMinutes(60)
             }));
 });
 

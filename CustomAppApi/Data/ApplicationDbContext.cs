@@ -41,8 +41,8 @@ namespace CustomAppApi.Data
             
             modelBuilder.Entity<Dealer>()
                 .HasOne(d => d.User)
-                .WithMany()
-                .HasForeignKey(d => d.UserId);
+                .WithOne(u => u.Dealer)
+                .HasForeignKey<Dealer>(d => d.UserId);
             
             modelBuilder.Entity<Offer>()
                 .HasOne(o => o.Dealer)

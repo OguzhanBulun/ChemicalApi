@@ -6,6 +6,7 @@ using CustomAppApi.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http;
 using System.Security.Claims;
+using BCrypt.Net;
 
 namespace CustomAppApi.Core.Services
 {
@@ -79,6 +80,7 @@ namespace CustomAppApi.Core.Services
             }
 
             var user = _mapper.Map<User>(userDto);
+            
             await _userRepository.AddAsync(user);
             await _unitOfWork.CommitAsync();
             
@@ -87,7 +89,7 @@ namespace CustomAppApi.Core.Services
 
         public async Task UpdateAsync(UserDto userDto)
         {
-            var existingUser = await _userRepository.GetByIdAsync(userDto.Id);
+            var existingUser = await _userRepository.GetByIdAsync(userDto.Id!.Value);
             if (existingUser == null)
                 throw new KeyNotFoundException($"User with ID {userDto.Id} not found.");
 
@@ -119,6 +121,55 @@ namespace CustomAppApi.Core.Services
         {
             return await _userRepository.AnyAsync(u => 
                 u.Username == username || u.Email == email);
+        }
+
+        public async Task ChangePasswordAsync(int userId, string currentPassword, string newPassword)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+                throw new KeyNotFoundException($"User with ID {userId} not found.");
+
+            if (!BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
+                throw new InvalidOperationException("Current password is incorrect");
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            
+            _userRepository.Update(user);
+            await _unitOfWork.CommitAsync();
+        }
+
+        public async Task<User> GetByUsernameWithPasswordAsync(string username)
+        {
+            var user = await _userRepository.Where(u => u.Username == username).FirstOrDefaultAsync();
+            if (user == null)
+                throw new KeyNotFoundException($"User with username {username} not found.");
+                
+            return user;
+        }
+
+        public async Task<UserDto> CreateWithPasswordAsync(UserDto userDto, string password)
+        {
+            var exists = await ExistsAsync(userDto.Username, userDto.Email);
+            if (exists)
+                throw new InvalidOperationException("Username or email already exists.");
+
+            if (userDto.UserType == 0)
+                userDto.UserType = UserType.User;
+
+            if (userDto.UserType == UserType.Admin)
+            {
+                var currentUser = GetCurrentUser();
+                if (currentUser?.UserType != UserType.Admin)
+                    throw new UnauthorizedAccessException("Only admins can create admin users");
+            }
+
+            var user = _mapper.Map<User>(userDto);
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
+            
+            await _userRepository.AddAsync(user);
+            await _unitOfWork.CommitAsync();
+            
+            return _mapper.Map<UserDto>(user);
         }
     }
 } 
