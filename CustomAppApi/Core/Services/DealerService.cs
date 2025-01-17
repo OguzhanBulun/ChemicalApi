@@ -52,13 +52,9 @@ namespace CustomAppApi.Core.Services
                 if (exists)
                     throw new InvalidOperationException($"Dealer with tax number {dealerDto.TaxNumber} or email {dealerDto.Email} already exists.");
 
-                // User'ın var olduğunu kontrol et
                 var user = await _userRepository.GetByIdAsync(dealerDto.UserId);
                 if (user == null)
                     throw new KeyNotFoundException($"User with ID {dealerDto.UserId} not found.");
-
-                if (user.UserType != UserType.Dealer)
-                    throw new InvalidOperationException("Selected user must be a dealer type user.");
 
                 var dealer = _mapper.Map<Dealer>(dealerDto);
                 await _dealerRepository.AddAsync(dealer);
