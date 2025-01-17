@@ -32,7 +32,8 @@ namespace CustomAppApi.Controllers
         [HttpPost]
         public async Task<IActionResult> Create(DealerDto dealerDto)
         {
-            var createdDealer = await _dealerService.CreateAsync(dealerDto);
+            var userId = int.Parse(User.FindFirst("UserId")?.Value ?? "0");
+            var createdDealer = await _dealerService.CreateAsync(dealerDto, userId);
             return CreatedAtAction(nameof(GetById), new { id = createdDealer.Id }, createdDealer);
         }
 

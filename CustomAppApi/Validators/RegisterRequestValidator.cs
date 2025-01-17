@@ -26,10 +26,10 @@ namespace CustomAppApi.Validators
                 .Matches("[^a-zA-Z0-9]").WithMessage("Password must contain at least one special character");
 
             RuleFor(x => x.UserType)
-                .NotEqual(UserType.Admin)
-                .WithMessage("Cannot directly register as Admin")
-                .Must(type => type == UserType.User || type == UserType.Dealer)
-                .WithMessage("UserType must be either User or Dealer");
+                .IsInEnum()
+                .WithMessage("Geçerli bir kullanıcı tipi seçiniz")
+                .Must(ut => ut == UserType.Admin || ut == UserType.Personnel)
+                .WithMessage("Geçersiz kullanıcı tipi");
         }
     }
 } 

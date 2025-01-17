@@ -14,6 +14,7 @@ namespace CustomAppApi.Data
         public DbSet<Product> Products { get; set; }
         public DbSet<Offer> Offers { get; set; }
         public DbSet<Sale> Sales { get; set; }
+        public DbSet<DealerProduct> DealerProducts { get; set; }
         
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -39,11 +40,6 @@ namespace CustomAppApi.Data
                 .Property(s => s.TotalPrice)
                 .HasPrecision(18, 2);
             
-            modelBuilder.Entity<Dealer>()
-                .HasOne(d => d.User)
-                .WithOne(u => u.Dealer)
-                .HasForeignKey<Dealer>(d => d.UserId);
-            
             modelBuilder.Entity<Offer>()
                 .HasOne(o => o.Dealer)
                 .WithMany(d => d.Offers)
@@ -63,6 +59,29 @@ namespace CustomAppApi.Data
                 .HasOne(s => s.Product)
                 .WithMany(p => p.Sales)
                 .HasForeignKey(s => s.ProductId);
+            
+            modelBuilder.Entity<DealerProduct>()
+                .HasOne(dp => dp.Dealer)
+                .WithMany(d => d.DealerProducts)
+                .HasForeignKey(dp => dp.DealerId);
+            
+            modelBuilder.Entity<DealerProduct>()
+                .HasOne(dp => dp.Product)
+                .WithMany(p => p.DealerProducts)
+                .HasForeignKey(dp => dp.ProductId);
+            
+            modelBuilder.Entity<Dealer>()
+                .HasOne(d => d.AssignedUser)
+                .WithMany(u => u.AssignedDealers)
+                .HasForeignKey(d => d.UserId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict);
+            
+            modelBuilder.Entity<Dealer>()
+                .HasOne(d => d.CreatedByUser)
+                .WithMany(u => u.CreatedDealers)
+                .HasForeignKey(d => d.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 } 

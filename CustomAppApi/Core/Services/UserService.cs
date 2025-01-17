@@ -65,12 +65,11 @@ namespace CustomAppApi.Core.Services
 
         public async Task<UserDto> CreateAsync(UserDto userDto)
         {
-            var exists = await ExistsAsync(userDto.Username, userDto.Email);
-            if (exists)
+            if (await ExistsAsync(userDto.Username, userDto.Email))
                 throw new InvalidOperationException("Username or email already exists.");
 
-            if (userDto.UserType == 0)
-                userDto.UserType = UserType.User;
+            var user = _mapper.Map<User>(userDto);
+            user.UserType = userDto.UserType;
 
             if (userDto.UserType == UserType.Admin)
             {
@@ -79,8 +78,6 @@ namespace CustomAppApi.Core.Services
                     throw new UnauthorizedAccessException("Only admins can create admin users");
             }
 
-            var user = _mapper.Map<User>(userDto);
-            
             await _userRepository.AddAsync(user);
             await _unitOfWork.CommitAsync();
             
@@ -89,9 +86,11 @@ namespace CustomAppApi.Core.Services
 
         public async Task UpdateAsync(UserDto userDto)
         {
-            var existingUser = await _userRepository.GetByIdAsync(userDto.Id!.Value);
+            var existingUser = await _userRepository.GetByIdAsync(userDto.Id.Value);
             if (existingUser == null)
                 throw new KeyNotFoundException($"User with ID {userDto.Id} not found.");
+
+            existingUser.UserType = userDto.UserType;
 
             _mapper.Map(userDto, existingUser);
             _userRepository.Update(existingUser);
@@ -154,7 +153,7 @@ namespace CustomAppApi.Core.Services
                 throw new InvalidOperationException("Username or email already exists.");
 
             if (userDto.UserType == 0)
-                userDto.UserType = UserType.User;
+                userDto.UserType = UserType.Personnel;
 
             if (userDto.UserType == UserType.Admin)
             {

@@ -4,6 +4,7 @@ using CustomAppApi.Core.UnitOfWork;
 using CustomAppApi.Models.DTOs;
 using CustomAppApi.Models.Entities;
 using Microsoft.EntityFrameworkCore;
+using CustomAppApi.Data;
 
 namespace CustomAppApi.Core.Services
 {
@@ -13,19 +14,21 @@ namespace CustomAppApi.Core.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly IGenericRepository<User> _userRepository;
+        private readonly ApplicationDbContext _context;
 
-        public DealerService(IGenericRepository<Dealer> dealerRepository, IUnitOfWork unitOfWork, IMapper mapper, IGenericRepository<User> userRepository)
+        public DealerService(IGenericRepository<Dealer> dealerRepository, IUnitOfWork unitOfWork, IMapper mapper, IGenericRepository<User> userRepository, ApplicationDbContext context)
         {
             _dealerRepository = dealerRepository;
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _userRepository = userRepository;
+            _context = context;
         }
 
         public async Task<IEnumerable<DealerDto>> GetAllAsync()
         {
             var dealers = await _dealerRepository.GetAll()
-                .Include(d => d.User)
+                .Include(d => d.AssignedUser)
                 .ToListAsync();
             return _mapper.Map<IEnumerable<DealerDto>>(dealers);
         }
@@ -33,7 +36,7 @@ namespace CustomAppApi.Core.Services
         public async Task<DealerDto> GetByIdAsync(int id)
         {
             var dealer = await _dealerRepository.GetAll()
-                .Include(d => d.User)
+                .Include(d => d.AssignedUser)
                 .FirstOrDefaultAsync(d => d.Id == id);
 
             if (dealer == null)
@@ -44,28 +47,18 @@ namespace CustomAppApi.Core.Services
             return dealerDto;
         }
 
-        public async Task<DealerDto> CreateAsync(DealerDto dealerDto)
+        public async Task<DealerDto> CreateAsync(DealerDto dealerDto, int createdByUserId)
         {
-            try 
-            {
-                var exists = await ExistsAsync(dealerDto.TaxNumber, dealerDto.Email);
-                if (exists)
-                    throw new InvalidOperationException($"Dealer with tax number {dealerDto.TaxNumber} or email {dealerDto.Email} already exists.");
+            if (await ExistsAsync(dealerDto.TaxNumber, dealerDto.Email))
+                throw new InvalidOperationException("Dealer with same tax number or email already exists.");
 
-                var user = await _userRepository.GetByIdAsync(dealerDto.UserId);
-                if (user == null)
-                    throw new KeyNotFoundException($"User with ID {dealerDto.UserId} not found.");
-
-                var dealer = _mapper.Map<Dealer>(dealerDto);
-                await _dealerRepository.AddAsync(dealer);
-                await _unitOfWork.CommitAsync();
-                
-                return await GetByIdAsync(dealer.Id);
-            }
-            catch (DbUpdateException ex)
-            {
-                throw new InvalidOperationException("Database error occurred while creating dealer.", ex);
-            }
+            var dealer = _mapper.Map<Dealer>(dealerDto);
+            dealer.CreatedByUserId = createdByUserId;
+            
+            await _dealerRepository.AddAsync(dealer);
+            await _unitOfWork.CommitAsync();
+            
+            return _mapper.Map<DealerDto>(dealer);
         }
 
         public async Task UpdateAsync(DealerDto dealerDto)
@@ -103,7 +96,7 @@ namespace CustomAppApi.Core.Services
         public async Task<DealerDto> GetByTaxNumberAsync(string taxNumber)
         {
             var dealer = await _dealerRepository.GetAll()
-                .Include(d => d.User)
+                .Include(d => d.AssignedUser)
                 .FirstOrDefaultAsync(d => d.TaxNumber == taxNumber);
 
             if (dealer == null)
@@ -121,9 +114,63 @@ namespace CustomAppApi.Core.Services
         public async Task<IEnumerable<DealerDto>> GetActiveAsync()
         {
             var dealers = await _dealerRepository.GetAll()
-                .Include(d => d.User)
+                .Include(d => d.AssignedUser)
                 .Where(d => d.IsActive)
                 .ToListAsync();
+            return _mapper.Map<IEnumerable<DealerDto>>(dealers);
+        }
+
+        public async Task AddProductsToDealerAsync(int dealerId, List<int> productIds)
+        {
+            var dealer = await _dealerRepository.GetByIdAsync(dealerId);
+            if (dealer == null)
+                throw new KeyNotFoundException($"Dealer with ID {dealerId} not found.");
+
+            var dealerProducts = productIds.Select(productId => new DealerProduct
+            {
+                DealerId = dealerId,
+                ProductId = productId
+            });
+
+            await _context.DealerProducts.AddRangeAsync(dealerProducts);
+            await _unitOfWork.CommitAsync();
+        }
+
+        public async Task<IEnumerable<DealerDto>> GetAllWithProductsAsync()
+        {
+            var dealers = await _dealerRepository.GetAll()
+                .Include(d => d.DealerProducts)
+                .ThenInclude(dp => dp.Product)
+                .Where(d => d.IsActive)
+                .ToListAsync();
+
+            return _mapper.Map<IEnumerable<DealerDto>>(dealers);
+        }
+
+        public async Task AssignUserToDealerAsync(int dealerId, int userId)
+        {
+            var dealer = await _dealerRepository.GetByIdAsync(dealerId);
+            if (dealer == null)
+                throw new KeyNotFoundException($"Dealer with ID {dealerId} not found.");
+
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+                throw new KeyNotFoundException($"User with ID {userId} not found.");
+
+            dealer.UserId = userId;
+            _dealerRepository.Update(dealer);
+            await _unitOfWork.CommitAsync();
+        }
+
+        public async Task<IEnumerable<DealerDto>> GetDealersByUserIdAsync(int userId)
+        {
+            var dealers = await _dealerRepository.GetAll()
+                .Include(d => d.AssignedUser)
+                .Include(d => d.DealerProducts)
+                .ThenInclude(dp => dp.Product)
+                .Where(d => d.UserId == userId && d.IsActive)
+                .ToListAsync();
+
             return _mapper.Map<IEnumerable<DealerDto>>(dealers);
         }
     }

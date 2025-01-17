@@ -32,16 +32,13 @@ namespace CustomAppApi.Core.Services
 
             var userDto = _mapper.Map<UserDto>(userEntity);
             var token = await GenerateTokenAsync(userDto);
-            var dealerId = userDto.UserType == UserType.Dealer ? 
-                (await _userService.GetByIdAsync(userDto.Id!.Value))?.Id : null as int?;
 
             return new AuthResponse
             {
                 Token = token,
-                Expiration = DateTime.UtcNow.AddMinutes(
-                    double.Parse(_configuration["JwtSettings:ExpirationInMinutes"])),
-                UserType = userDto.UserType.ToString(),
-                DealerId = dealerId
+                Expiration = DateTime.UtcNow.AddMinutes(60),
+                UserType = userEntity.UserType.ToString(),
+                DealerId = null
             };
         }
 
@@ -57,15 +54,6 @@ namespace CustomAppApi.Core.Services
                 new Claim(ClaimTypes.Role, user.UserType.ToString()),
                 new Claim("UserId", user.Id!.Value.ToString())
             };
-
-            if (user.UserType == UserType.Dealer)
-            {
-                var dealer = await _userService.GetByIdAsync(user.Id!.Value);
-                if (dealer != null)
-                {
-                    claims.Add(new Claim("DealerId", dealer.Id!.Value.ToString()));
-                }
-            }
 
             var token = new JwtSecurityToken(
                 issuer: _configuration["JwtSettings:Issuer"],

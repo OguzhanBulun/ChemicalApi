@@ -6,6 +6,7 @@ namespace CustomAppApi.Models.Entities
         public string Email { get; set; }
         public string PasswordHash { get; set; }
         public UserType UserType { get; set; }
-        public Dealer? Dealer { get; set; }
+        public virtual ICollection<Dealer> AssignedDealers { get; set; }
+        public virtual ICollection<Dealer> CreatedDealers { get; set; }
     }
 } 

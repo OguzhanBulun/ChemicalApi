@@ -9,7 +9,8 @@ namespace CustomAppApi.Models.Entities
         public string Name { get; set; }
         public string Description { get; set; }
         public string Unit { get; set; }
-        public ICollection<Offer> Offers { get; set; }
-        public ICollection<Sale> Sales { get; set; }
+        public virtual ICollection<DealerProduct> DealerProducts { get; set; }
+        public virtual ICollection<Offer> Offers { get; set; }
+        public virtual ICollection<Sale> Sales { get; set; }
     }
 } 

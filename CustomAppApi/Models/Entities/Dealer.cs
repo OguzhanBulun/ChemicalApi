@@ -11,8 +11,11 @@ namespace CustomAppApi.Models.Entities
         public string PhoneNumber { get; set; }
         public string Email { get; set; }
         public string TaxNumber { get; set; }
-        public int UserId { get; set; }
-        public virtual User User { get; set; }
+        public int? UserId { get; set; }
+        public User AssignedUser { get; set; }
+        public int? CreatedByUserId { get; set; }
+        public User CreatedByUser { get; set; }
+        public virtual ICollection<DealerProduct> DealerProducts { get; set; }
         public virtual ICollection<Offer> Offers { get; set; }
         public virtual ICollection<Sale> Sales { get; set; }
     }

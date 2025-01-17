@@ -105,5 +105,18 @@ namespace CustomAppApi.Core.Services
         {
             return await _productRepository.AnyAsync(p => p.Name == name);
         }
+
+        public async Task<ProductDto> GetByIdWithDealersAsync(int id)
+        {
+            var product = await _productRepository.GetAll()
+                .Include(p => p.DealerProducts)
+                .ThenInclude(dp => dp.Dealer)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (product == null)
+                throw new KeyNotFoundException($"Product with ID {id} not found.");
+
+            return _mapper.Map<ProductDto>(product);
+        }
     }
 } 
