@@ -47,6 +47,14 @@ namespace CustomAppApi.Controllers.V1
             return Ok(ApiResponse<DealerDto>.SuccessResult(dealer));
         }
 
+        [HttpPost("{dealerId}/assign-user/{userId}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<ApiResponse<DealerDto>>> AssignUser(int dealerId, int userId)
+        {
+            await _dealerService.AssignUserToDealerAsync(dealerId, userId);
+            return Ok(ApiResponse<object>.SuccessResult(null, "Bayi kullanıcıya başarıyla atandı"));
+        }
+
         // ... diğer endpoint'ler ...
     }
 } 

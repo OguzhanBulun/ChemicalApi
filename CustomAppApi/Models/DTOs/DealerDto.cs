@@ -8,9 +8,8 @@ namespace CustomAppApi.Models.DTOs
         public string PhoneNumber { get; set; }
         public string Email { get; set; }
         public string TaxNumber { get; set; }
-        public int? UserId { get; set; }
-        public UserDto AssignedUser { get; set; }
         public int? CreatedByUserId { get; set; }
-        public List<ProductDto> Products { get; set; }
+        public UserDto? AssignedUser { get; set; }
+        public List<ProductDto>? Products { get; set; }
     }
 } 

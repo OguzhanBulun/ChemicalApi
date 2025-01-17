@@ -14,6 +14,6 @@ namespace CustomAppApi.Core.Services
         Task<bool> ExistsAsync(string username, string email);
         Task ChangePasswordAsync(int userId, string currentPassword, string newPassword);
         Task<User> GetByUsernameWithPasswordAsync(string username);
-        Task<UserDto> CreateWithPasswordAsync(UserDto userDto, string password);
+        Task<UserDto> CreateWithPasswordAsync(UserDto userDto, string password, bool isSeedOperation = false);
     }
 } 

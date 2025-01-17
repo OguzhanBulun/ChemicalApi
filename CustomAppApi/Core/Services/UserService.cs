@@ -146,7 +146,7 @@ namespace CustomAppApi.Core.Services
             return user;
         }
 
-        public async Task<UserDto> CreateWithPasswordAsync(UserDto userDto, string password)
+        public async Task<UserDto> CreateWithPasswordAsync(UserDto userDto, string password, bool isSeedOperation = false)
         {
             var exists = await ExistsAsync(userDto.Username, userDto.Email);
             if (exists)
@@ -155,7 +155,7 @@ namespace CustomAppApi.Core.Services
             if (userDto.UserType == 0)
                 userDto.UserType = UserType.Personnel;
 
-            if (userDto.UserType == UserType.Admin)
+            if (!isSeedOperation && userDto.UserType == UserType.Admin)
             {
                 var currentUser = GetCurrentUser();
                 if (currentUser?.UserType != UserType.Admin)
